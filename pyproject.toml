@@ -5,12 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "splatpack"
 version = "0.1.0"
-description = "Shared-field + sparse-residual compression for Gaussian-splat PLY files"
+description = "Shared-field + sparse-residual compression and diagnostics for Gaussian-splat and point-cloud PLY files"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24"]
 
 [project.scripts]
 splatpack = "splatpack:main"
+splatpack-heatmap = "splatpack_visual:main"
 
 [tool.setuptools]
-py-modules = ["splatpack"]
+py-modules = ["splatpack", "splatpack_visual"]
