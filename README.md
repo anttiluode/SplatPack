@@ -1,24 +1,24 @@
 # SplatPack
 
-**Shared field + sparse residuals for 3D Gaussian splats.**
+**Shared field + sparse residuals for 3D Gaussian splats and point-cloud attributes.**
 
-SplatPack asks a simple question about a trained Gaussian-splat scene:
+SplatPack asks a simple question about a scene:
 
-> How many splat attributes really need to be stored independently?
+> How many per-point attributes really need to be stored independently?
 
 A normal 3DGS PLY stores RGB / spherical harmonics, opacity, scale and rotation for every splat. SplatPack fits a compact coordinate-conditioned field to those attributes, then stores exact residual attribute vectors only for the splats the field explains worst.
 
 ```text
-3DGS PLY
+3DGS / point-cloud PLY
    |
    +--> XYZ positions ------------------------------+
    |                                                |
    +--> shared coordinate field F(x,y,z)            |
    |                                                +--> .spk
-   +--> top-K hard splats --> exact residuals -------+
+   +--> top-K hard points --> exact residuals -------+
 ```
 
-This is **not** claiming a new state-of-the-art Gaussian-splat codec. Version 0.1 is an inspectable experiment/tool for measuring the **shared-field + residual decomposition** of a real splat scene. The important output is the rate–distortion curve and the identity of the hard residual splats.
+This is **not** claiming a new state-of-the-art Gaussian-splat codec. Version 0.1 is an inspectable experiment/tool for measuring the **shared-field + residual decomposition** of a real scene. The important outputs are the rate–distortion curve and the identity of the hard residual points.
 
 ## Install
 
@@ -83,9 +83,49 @@ Run the built-in round-trip check:
 splatpack selftest
 ```
 
+## Visual residual diagnostics
+
+Some point-cloud PLY exporters include RGB plus placeholder normal channels such as `nx=ny=nz=0`. A zero reconstruction error on those channels is trivial, not evidence that the shape was learned.
+
+For visual inspection, use:
+
+```bash
+splatpack-heatmap input.ply visual_out
+```
+
+If `red`, `green`, and `blue` are present, the visual tool models RGB by default. Otherwise it falls back to the available non-constant modeled attributes. It also reports constant/dead properties.
+
+The command writes:
+
+```text
+visual_out/
+  input_residual_heatmap.ply   # blue/cyan = easy, yellow/red = hard
+  input_hard_10pct.ply         # only the hardest 10% of points
+  input_shared_rgb.ply         # field-only RGB prediction, when RGB exists
+  input_visual_summary.json
+```
+
+The heatmap answers a different question from ordinary compression:
+
+> Where does a small shared coordinate field stop explaining the object?
+
+That can expose boundaries, local detail, texture changes, thin geometry, specular regions, or simply weaknesses of the chosen field.
+
+Choose other attributes explicitly when useful:
+
+```bash
+splatpack-heatmap point_cloud.ply visual_out --properties opacity scale_0 scale_1 scale_2
+```
+
+Change how much of the hard set is exported:
+
+```bash
+splatpack-heatmap input.ply visual_out --hard 0.05
+```
+
 ## What gets modeled
 
-For a standard 3DGS PLY, SplatPack models floating-point properties named like:
+For a standard 3DGS PLY, the compressor models floating-point properties named like:
 
 ```text
 f_dc_*
@@ -110,13 +150,13 @@ The default field has 58 basis features (`10 + 2*24`) regardless of the number o
 
 ## Residual selection
 
-For each splat, SplatPack measures prediction error after normalizing every modeled property by its data standard deviation:
+For each point, SplatPack measures prediction error after normalizing every modeled property by its data standard deviation:
 
 ```math
 score_i = mean_j ((a_ij - F_j(q_i)) / sigma_j)^2
 ```
 
-The worst-scoring fraction becomes the residual set. For those splats, SplatPack stores the full attribute residual vector.
+The worst-scoring fraction becomes the residual set. For those points, SplatPack stores the full attribute residual vector.
 
 This makes the residual set useful in its own right: it is a map of **where the scene refuses the shared model**. On real captures those regions may concentrate around thin geometry, foliage, occlusion boundaries, specular material, text, or simply failure modes of the chosen field.
 
@@ -126,10 +166,10 @@ The sweep reports, for every residual fraction:
 
 - actual `.spk` byte size,
 - compression ratio against the source PLY,
-- number of exact residual splats,
+- number of exact residual points,
 - normalized attribute RMSE.
 
-The metric is currently **attribute-space**, not rendered PSNR/SSIM. A renderer-aware benchmark is the obvious next layer, but keeping v0.1 renderer-independent makes it usable with PLYs from different 3DGS pipelines.
+The metric is currently **attribute-space**, not rendered PSNR/SSIM. A renderer-aware benchmark is the obvious next layer, but keeping v0.1 renderer-independent makes it usable with PLYs from different pipelines.
 
 ## Useful knobs
 
@@ -141,7 +181,7 @@ splatpack sweep scene.ply sweep_out \
   --fractions 0 0.01 0.02 0.05 0.10 0.20
 ```
 
-For very large scenes, `--fit-samples` bounds fitting memory; all splats are still scored for residual selection.
+For very large scenes, `--fit-samples` bounds fitting memory; all points are still scored for residual selection.
 
 ## Why this exists
 
@@ -157,4 +197,4 @@ SplatPack therefore does not privilege the operator. It starts with a generic co
 cheap shared structure + sparse exceptions.
 ```
 
-If the rate–distortion curve bends strongly, that is the signal to build the next version: rendered-quality scoring, residual visualization, stronger interchangeable backbones, and coherent global editing of the shared field.
+If the rate–distortion curve bends strongly, that is the signal to build the next version: rendered-quality scoring, stronger interchangeable backbones, and coherent global editing of the shared field.
