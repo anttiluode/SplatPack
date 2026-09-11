@@ -19,3 +19,33 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: splatpack selftest
       - run: splatpack demo demo_out --splats 1200 --fit-samples 1000 --rff 8 --fractions 0 0.05 0.20
+
+  windows-cli:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e .
+      - name: Create tiny PLY fixture
+        shell: pwsh
+        run: |
+          @'
+          ply
+          format ascii 1.0
+          element vertex 2
+          property float x
+          property float y
+          property float z
+          property float f_dc_0
+          property float f_dc_1
+          property float f_dc_2
+          property float opacity
+          end_header
+          0 0 0 0.1 0.2 0.3 1.0
+          1 0 0 0.2 0.3 0.4 0.8
+          '@ | Set-Content -Encoding ascii windows_test.ply
+      - name: Exact repo-root analyze command must execute, not open splatpack.py
+        shell: cmd
+        run: splatpack analyze windows_test.ply
