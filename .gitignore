@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.spk
+*.ply
+sweep_out/
+demo_out/
+.venv/
