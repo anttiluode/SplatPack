@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "splatpack"
+version = "0.1.0"
+description = "Shared-field + sparse-residual compression for Gaussian-splat PLY files"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[project.scripts]
+splatpack = "splatpack:main"
+
+[tool.setuptools]
+py-modules = ["splatpack"]
